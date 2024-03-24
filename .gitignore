@@ -4,3 +4,5 @@ __pycache__
 
 *.docx
 *.csv
+# Consider removing later to include graphs in repo
+*.pdf
