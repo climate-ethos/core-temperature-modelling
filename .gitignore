@@ -4,5 +4,6 @@ __pycache__
 
 *.docx
 *.csv
+*.pkl
 # Consider removing later to include graphs in repo
 *.pdf
