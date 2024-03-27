@@ -2,8 +2,11 @@
 __pycache__
 .DS_Store
 
+# Dataset
 *.docx
 *.csv
+# Model weights
 *.pkl
+*.h5
 # Consider removing later to include graphs in repo
 *.pdf
