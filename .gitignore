@@ -7,6 +7,6 @@ __pycache__
 *.csv
 # Model weights
 *.pkl
-*.h5
+*.keras
 # Consider removing later to include graphs in repo
 *.pdf
