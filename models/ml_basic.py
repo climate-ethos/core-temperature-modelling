@@ -5,8 +5,8 @@ from sklearn.metrics import mean_squared_error
 from helpers import get_sample
 import joblib
 
-
-def import_data():
+# Import dataset and trim to only required columns
+def import_data(features, output):
     # Import dataset
     df = pd.read_csv('./dataset/230322_OlderPredictTc_data_thermal.csv')
 
@@ -17,10 +17,11 @@ def import_data():
     # Select only time > 0
     df = df[df.time > 0]
 
+    # Unique ID to identify an individual under a certain condition
+    df['unique_id'] = df['study'].astype(str) + '_' + df['condition'].astype(str) + '_' + df['id_all'].astype(str)
+
     # Select only features and output
-    features = ['female', 'age', 'height', 'mass', 'ta_set', 'rh_set', 'previous_tre_int', 'previous_mtsk_int']
-    output = ['tre_int', 'mtsk_int']
-    df = df[features + output + ['id_all', 'study', 'condition', 'time']]
+    df = df[features + output + ['id_all', 'study', 'condition', 'time', 'unique_id']]
 
     # Create train_df based on participants assigned to training set
     train_ids = [46, 34, 68, 30, 40, 98, 89, 65, 24, 58, 85, 67, 28, 39, 35, 77, 26,
@@ -28,14 +29,13 @@ def import_data():
                  95, 66, 44, 25, 76, 94, 53, 32, 73, 23, 49]
     train_df = df[df['id_all'].isin(train_ids)]
 
-    return train_df, features, output
+    # Reset index
+    train_df.reset_index(inplace=True)
 
-def train_model(model, train_df, features, output):
-    def warn(*args, **kwargs):
-        pass
-    import warnings
-    warnings.warn = warn
+    return train_df
 
+# Scale the dataset between 0 to 1
+def scale_data(train_df, features, output):
     features_scaler = MinMaxScaler(feature_range=(0,1))
     output_scaler = MinMaxScaler(feature_range=(0,1))
 
@@ -43,9 +43,18 @@ def train_model(model, train_df, features, output):
     train_features = features_scaler.fit_transform(train_df[features])
     train_output = output_scaler.fit_transform(train_df[output])
 
+    return features_scaler, output_scaler, train_features, train_output
+
+# Train the model
+def train_model(model, train_features, train_output):
+    def warn(*args, **kwargs):
+        pass
+    import warnings
+    warnings.warn = warn
+
     model.fit(train_features, train_output)
 
-    return model, features_scaler, output_scaler
+    return model
 
 # SIMULATE
 # Simulate initial 60 minutes
@@ -66,6 +75,7 @@ def simulate_initial(row, features, features_scaler, output_scaler, model):
     # Return core and skin temp at end of 60 mins (e.g. [37, 32])
     return body_conditions
 
+# Run and save output results for a model
 def run_and_save_trial(study, condition, features, features_scaler, output_scaler, model, model_name):
     # Get sample
     sample = get_sample(study, condition)
@@ -100,9 +110,14 @@ def run_and_save_trial(study, condition, features, features_scaler, output_scale
     return tre_rmse, mtsk_rmse
 
 def train_and_run_all(model, model_name):
-    train_df, features, output = import_data()
-    model, features_scaler, output_scaler = train_model(model, train_df, features, output)
+    features = ['female', 'age', 'height', 'mass', 'ta_set', 'rh_set', 'previous_tre_int', 'previous_mtsk_int']
+    output = ['tre_int', 'mtsk_int']
 
+    train_df = import_data(features, output)
+    features_scaler, output_scaler, train_features, train_output = scale_data(train_df, features, output)
+    model = train_model(model, train_features, train_output)
+
+    # Save the model as a pkl file
     joblib.dump(model, 'model_weights/{}.pkl'.format(model_name))
 
     all_tre_rmse = []
