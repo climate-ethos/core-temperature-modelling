@@ -58,7 +58,7 @@ def prepare_data(features):
     return features_scaler, output_scaler, X_padded, y_padded, max_len
 
 # Run and save an individual trial
-def run_and_save_trial(study, condition, features, features_scaler, output_scaler, model, model_name, max_len):
+def run_and_save_trial(study, condition, features, features_scaler, output_scaler, model, model_name, max_len, is_transformer):
     # Get sample
     sample = get_sample(study, condition)
 
@@ -85,7 +85,10 @@ def run_and_save_trial(study, condition, features, features_scaler, output_scale
     all_X_padded = np.array([np.pad(seq, ((0, max_len - len(seq)), (0, 0)), mode='constant') for seq in all_X_seq])
 
     # Make predictions
-    predictions = model.predict(all_X_padded)
+    if is_transformer:
+        predictions = model.predict([all_X_padded, all_X_padded])
+    else:
+        predictions = model.predict(all_X_padded)
 
     # Remove predictions corresponding to padded inputs and extra data
     unpadded_predictions = []
@@ -111,26 +114,26 @@ def run_and_save_trial(study, condition, features, features_scaler, output_scale
     return tre_rmse, mtsk_rmse
 
 # Run all trials
-def run_all(model, model_name, features, features_scaler, output_scaler, max_len):
+def run_all(model, model_name, features, features_scaler, output_scaler, max_len, is_transformer=False):
     all_tre_rmse = []
     all_mtsk_rmse = []
 
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 1 (prolonged)', 'hot', features, features_scaler, output_scaler, model, model_name, max_len)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 1 (prolonged)', 'hot', features, features_scaler, output_scaler, model, model_name, max_len, is_transformer)
     all_tre_rmse.append(tre_rmse)
     all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'cool', features, features_scaler, output_scaler, model, model_name, max_len)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'cool', features, features_scaler, output_scaler, model, model_name, max_len, is_transformer)
     all_tre_rmse.append(tre_rmse)
     all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'temp', features, features_scaler, output_scaler, model, model_name, max_len)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'temp', features, features_scaler, output_scaler, model, model_name, max_len, is_transformer)
     all_tre_rmse.append(tre_rmse)
     all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'warm', features, features_scaler, output_scaler, model, model_name, max_len)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'warm', features, features_scaler, output_scaler, model, model_name, max_len, is_transformer)
     all_tre_rmse.append(tre_rmse)
     all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'hot', features, features_scaler, output_scaler, model, model_name, max_len)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'hot', features, features_scaler, output_scaler, model, model_name, max_len, is_transformer)
     all_tre_rmse.append(tre_rmse)
     all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 3 (cooling)', 'hot', features, features_scaler, output_scaler, model, model_name, max_len)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 3 (cooling)', 'hot', features, features_scaler, output_scaler, model, model_name, max_len, is_transformer)
     all_tre_rmse.append(tre_rmse)
     all_mtsk_rmse.append(mtsk_rmse)
 
