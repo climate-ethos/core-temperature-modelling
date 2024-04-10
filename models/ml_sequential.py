@@ -86,9 +86,9 @@ def run_and_save_trial(study, condition, features, features_scaler, output_scale
 
     # Make predictions
     if is_transformer:
-        predictions = model.predict([all_X_padded, all_X_padded])
+        predictions = model.predict([all_X_padded, all_X_padded], verbose=0)
     else:
-        predictions = model.predict(all_X_padded)
+        predictions = model.predict(all_X_padded, verbose=0)
 
     # Remove predictions corresponding to padded inputs and extra data
     unpadded_predictions = []
