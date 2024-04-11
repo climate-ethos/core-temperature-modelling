@@ -5,6 +5,10 @@ __pycache__
 # Dataset
 *.docx
 *.csv
+
+# Hyperparameter tuning
+tuner_dir
+
 # Model weights
 *.pkl
 *.keras
