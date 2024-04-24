@@ -58,13 +58,11 @@ def train_model(model, train_features, train_output):
 
 # SIMULATE
 # Simulate initial 60 minutes
-def simulate_initial(row, features, features_scaler, output_scaler, model):
+def simulate_initial(body_parameters, features_scaler, output_scaler, model):
     # Initial ambient conditions for cooling environment (22°C 9% RH)
     initial_ambient = [22, 9]
     # Initial core and skin temp
     body_conditions = [37, 32]
-    # Body parameters taken from data
-    body_parameters = row[features[:-4]].tolist()
     # Simulate for 60 mins
     for i in range(60):
         X = np.array(body_parameters + initial_ambient + body_conditions).reshape(1, -1)
@@ -87,7 +85,9 @@ def run_and_save_trial(study, condition, features, features_scaler, output_scale
         for index, row in group.iterrows():
             # Get initial conditions
             if not predicted_values:
-                predicted_values = [simulate_initial(row, features, features_scaler, output_scaler, model)]
+                # Body parameters taken from data
+                body_parameters = row[features[:-4]].tolist()
+                predicted_values = [simulate_initial(body_parameters, features_scaler, output_scaler, model)]
                 continue
             # Calculate next temp values
             X = np.array(row[features[:-2]].tolist() + predicted_values[-1]).reshape(1, -1)
