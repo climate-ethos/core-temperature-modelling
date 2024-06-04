@@ -1,9 +1,8 @@
-from models.ml_basic import import_data, scale_data
+from models.ml_basic import cool_Ta, cool_RH, import_data, scale_data
 from helpers import get_sample
 from sklearn.metrics import mean_squared_error
 import numpy as np
 import pandas as pd
-
 
 # Create extra data for each participant
 # This simulates sitting in air conditioning for 60 minutes before the trial
@@ -16,8 +15,8 @@ def concat_extra_data(input_df):
             'age': [participant_data['age']] * 60,
             'height': [participant_data['height']] * 60,
             'mass': [participant_data['mass']] * 60,
-            'ta_set': [23] * 60,
-            'rh_set': [9] * 60,
+            'ta_set': [cool_Ta] * 60,
+            'rh_set': [cool_RH] * 60,
             'tre_int': [participant_data['tre_int']] * 60,
             'mtsk_int': [participant_data['mtsk_int']] * 60,
             'id_all': [participant_data['id_all']] * 60,

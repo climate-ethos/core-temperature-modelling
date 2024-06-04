@@ -5,6 +5,9 @@ from sklearn.metrics import mean_squared_error
 from helpers import get_sample
 import joblib
 
+cool_Ta = 23
+cool_RH = 50
+
 # Import dataset and trim to only required columns
 def import_data(features, output):
     # Import dataset
@@ -16,6 +19,10 @@ def import_data(features, output):
 
     # Select only time > 0
     df = df[df.time > 0]
+
+    # IMPORTANT: REPLACE 9% RH during cooling in heatwave 3 with the correct value of 50%
+    selector = (df['study'] == 'heatwave 3 (cooling)') & (df['ta_set'] == 23)
+    df.loc[selector, 'rh_set'] = 50
 
     # Unique ID to identify an individual under a certain condition
     df['unique_id'] = df['study'].astype(str) + '_' + df['condition'].astype(str) + '_' + df['id_all'].astype(str)
@@ -59,8 +66,8 @@ def train_model(model, train_features, train_output):
 # SIMULATE
 # Simulate initial 60 minutes
 def simulate_initial(body_parameters, features_scaler, output_scaler, model):
-    # Initial ambient conditions for cooling environment (22°C 9% RH)
-    initial_ambient = [22, 9]
+    # Initial ambient conditions for cooling environment (23°C 50% RH)
+    initial_ambient = [cool_Ta, cool_RH]
     # Initial core and skin temp
     body_conditions = [37, 32]
     # Simulate for 60 mins
