@@ -21,8 +21,8 @@ def two_nodes_optimized(
     max_sweating=500,
     w_max=False,
     length_time_simulation = 120,  # length time simulation
-    temp_skin_neutral = 33.7,
-    temp_core_neutral = 36.8,
+    initial_skin_temp = 33.7,
+    initial_core_temp = 36.8,
 ):
     # Initial variables as defined in the ASHRAE 55-2020
     air_speed = max(v, 0.1)
@@ -40,8 +40,8 @@ def two_nodes_optimized(
     temp_body_neutral = alfa * temp_skin_neutral + (1 - alfa) * temp_core_neutral
     skin_blood_flow_neutral = 6.3
 
-    t_skin = temp_skin_neutral
-    t_core = temp_core_neutral
+    t_skin = initial_skin_temp
+    t_core = initial_core_temp
     m_bl = skin_blood_flow_neutral
 
     # initialize some variables
@@ -101,7 +101,7 @@ def two_nodes_optimized(
     # respiration
     q_res = 0.0023 * m * (44.0 - vapor_pressure)  # latent heat loss due to respiration
     c_res = 0.0014 * m * (34.0 - tdb)  # sensible convective heat loss respiration
-    
+
     skin_temp_hist = []
     core_temp_hist = []
 
@@ -205,10 +205,10 @@ def two_nodes_optimized(
         met_shivering = 19.4 * colds * c_cold  # met shivering W/m2
         m = rm + met_shivering
         alfa = 0.0417737 + 0.7451833 / (m_bl + 0.585417)
-     
+
         skin_temp_hist.append(t_skin)
         core_temp_hist.append(t_core)
-        
+
     return_dict = dict()
     return_dict['core_temp_hist'] = core_temp_hist
     return_dict['skin_temp_hist'] = skin_temp_hist
