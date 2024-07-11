@@ -33,4 +33,6 @@ def predict_custom_input(female, age, height, mass, ta_set, rh_set, time_steps=5
 
     # Get the final predicted tre and mtsk values
     final_tre, final_mtsk = predicted_values[-1]
-    return final_tre, final_mtsk
+    initial_tre, initial_mtsk = initial_body_conditions
+    # Get the initial values
+    return final_tre, final_mtsk, initial_tre, initial_mtsk
