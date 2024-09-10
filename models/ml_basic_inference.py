@@ -1,6 +1,24 @@
 from models.ml_basic import import_data, scale_data, simulate_initial
 import numpy as np
 import joblib
+import os
+
+# Save scalers
+def save_scalers(features_scaler, output_scaler, directory='model_weights/scalars'):
+    # Create the directory if it doesn't exist
+    os.makedirs(directory, exist_ok=True)
+
+    # Save the scalers
+    joblib.dump(features_scaler, os.path.join(directory, 'features_scaler.pkl'))
+    joblib.dump(output_scaler, os.path.join(directory, 'output_scaler.pkl'))
+
+# Load scalers
+def load_scalers(directory='model_weights/scalars'):
+    # Load the scalers
+    features_scaler = joblib.load(os.path.join(directory, 'features_scaler.pkl'))
+    output_scaler = joblib.load(os.path.join(directory, 'output_scaler.pkl'))
+
+    return features_scaler, output_scaler
 
 # Load the trained model
 model_name = 'ml_ridge_regression'  # Replace with the desired model name
@@ -13,6 +31,8 @@ output = ['tre_int', 'mtsk_int']
 # Create scalars the same as for training
 train_df = import_data(features, output)
 features_scaler, output_scaler, train_features, train_output = scale_data(train_df, features, output)
+# Save them so they can be used later
+save_scalers(features_scaler, output_scaler)
 
 # Function to predict tre and mtsk for custom input features
 def predict_custom_input(female, age, height, mass, ta_set, rh_set, time_steps=540):
