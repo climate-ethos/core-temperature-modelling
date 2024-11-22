@@ -5,25 +5,25 @@ import numpy as np
 import pandas as pd
 
 # Create extra data for each participant
-# This simulates sitting in air conditioning for 60 minutes before the trial
+# This simulates sitting in air conditioning for 120 minutes before the trial
 def concat_extra_data(input_df):
     extra_data = pd.DataFrame()
     for uid in input_df['unique_id'].unique():
         participant_data = input_df[input_df['unique_id'] == uid].iloc[0]
         new_data = pd.DataFrame({
-            'female': [participant_data['female']] * 60,
-            'age': [participant_data['age']] * 60,
-            'height': [participant_data['height']] * 60,
-            'mass': [participant_data['mass']] * 60,
-            'ta_set': [cool_Ta] * 60,
-            'rh_set': [cool_RH] * 60,
-            'tre_int': [participant_data['tre_int']] * 60,
-            'mtsk_int': [participant_data['mtsk_int']] * 60,
-            'id_all': [participant_data['id_all']] * 60,
-            'unique_id': [participant_data['unique_id']] * 60,
-            'study': [participant_data['study']] * 60,
-            'condition': [participant_data['condition']] * 60,
-            'time': list(range(-60, 0))
+            'female': [participant_data['female']] * 120,
+            'age': [participant_data['age']] * 120,
+            'height': [participant_data['height']] * 120,
+            'mass': [participant_data['mass']] * 120,
+            'ta_set': [cool_Ta] * 120,
+            'rh_set': [cool_RH] * 120,
+            'tre_int': [participant_data['tre_int']] * 120,
+            'mtsk_int': [participant_data['mtsk_int']] * 120,
+            'id_all': [participant_data['id_all']] * 120,
+            'unique_id': [participant_data['unique_id']] * 120,
+            'study': [participant_data['study']] * 120,
+            'condition': [participant_data['condition']] * 120,
+            'time': list(range(-120, 0))
         })
         extra_data = pd.concat([extra_data, new_data], ignore_index=True)
     return pd.concat([extra_data, input_df], ignore_index=True)
@@ -92,7 +92,7 @@ def run_and_save_trial(study, condition, features, features_scaler, output_scale
     # Remove predictions corresponding to padded inputs and extra data
     unpadded_predictions = []
     for i, length in enumerate(seq_lengths):
-        unpadded_predictions.append(predictions[i, 60:length])  # Slice to remove 60 mins of extra data
+        unpadded_predictions.append(predictions[i, 120:length])  # Slice to remove 120 mins of extra data
 
     # Flatten the unpadded predictions
     unpadded_predictions = np.concatenate(unpadded_predictions, axis=0)

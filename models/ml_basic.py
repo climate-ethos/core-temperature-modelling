@@ -64,20 +64,20 @@ def train_model(model, train_features, train_output):
     return model
 
 # SIMULATE
-# Simulate initial 60 minutes
+# Simulate initial 120 minutes
 def simulate_initial(body_parameters, features_scaler, output_scaler, model):
     # Initial ambient conditions for cooling environment (23°C 50% RH)
     initial_ambient = [cool_Ta, cool_RH]
     # Initial core and skin temp
     body_conditions = [37, 32]
-    # Simulate for 60 mins
-    for i in range(60):
+    # Simulate for 120 mins
+    for i in range(120):
         X = np.array(body_parameters + initial_ambient + body_conditions).reshape(1, -1)
         X = features_scaler.transform(X)
         y = model.predict(X)
         y = output_scaler.inverse_transform(y)
         body_conditions = y[0].tolist()
-    # Return core and skin temp at end of 60 mins (e.g. [37, 32])
+    # Return core and skin temp at end of 120 mins (e.g. [37, 32])
     return body_conditions
 
 # Run and save output results for a model
@@ -126,6 +126,46 @@ def train_and_run_all(model, model_name):
 
     # Save the model as a pkl file
     joblib.dump(model, 'model_weights/{}.pkl'.format(model_name))
+
+    all_tre_rmse = []
+    all_mtsk_rmse = []
+
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 1 (prolonged)', 'hot', features, features_scaler, output_scaler, model, model_name)
+    all_tre_rmse.append(tre_rmse)
+    all_mtsk_rmse.append(mtsk_rmse)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'cool', features, features_scaler, output_scaler, model, model_name)
+    all_tre_rmse.append(tre_rmse)
+    all_mtsk_rmse.append(mtsk_rmse)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'temp', features, features_scaler, output_scaler, model, model_name)
+    all_tre_rmse.append(tre_rmse)
+    all_mtsk_rmse.append(mtsk_rmse)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'warm', features, features_scaler, output_scaler, model, model_name)
+    all_tre_rmse.append(tre_rmse)
+    all_mtsk_rmse.append(mtsk_rmse)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'hot', features, features_scaler, output_scaler, model, model_name)
+    all_tre_rmse.append(tre_rmse)
+    all_mtsk_rmse.append(mtsk_rmse)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 3 (cooling)', 'hot', features, features_scaler, output_scaler, model, model_name)
+    all_tre_rmse.append(tre_rmse)
+    all_mtsk_rmse.append(mtsk_rmse)
+
+    avg_tre_rmse = np.mean(all_tre_rmse)
+    avg_mtsk_rmse = np.mean(all_mtsk_rmse)
+
+    print(f"{model_name}")
+    print("Average TRE RMSE:", avg_tre_rmse)
+    print("Average MTSK RMSE:", avg_mtsk_rmse)
+
+def run_all(model_name):
+    features = ['female', 'age', 'height', 'mass', 'ta_set', 'rh_set', 'previous_tre_int', 'previous_mtsk_int']
+    output = ['tre_int', 'mtsk_int']
+
+    # Import and scale data
+    train_df = import_data(features, output)
+    features_scaler, output_scaler, train_features, train_output = scale_data(train_df, features, output)
+
+    # Load the model from pkl file instead of training
+    model = joblib.load('model_weights/{}.pkl'.format(model_name))
 
     all_tre_rmse = []
     all_mtsk_rmse = []
