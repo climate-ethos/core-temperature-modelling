@@ -9,9 +9,12 @@ cool_Ta = 23
 cool_RH = 50
 
 # Import dataset and trim to only required columns
-def import_data(features, output):
+def import_data_all(features, output):
     # Import dataset
     df = pd.read_csv('./dataset/230322_OlderPredictTc_data_thermal.csv')
+
+    # Remove ID 26 (incomplete data) in heatwave 2 hot
+    df = df[df['id'] != 26]
 
     # Only use previous values from same individual
     df['previous_tre_int'] = df.groupby('id_all')['tre_int'].shift(1)
@@ -29,6 +32,12 @@ def import_data(features, output):
 
     # Select only features and output
     df = df[features + output + ['id_all', 'study', 'condition', 'time', 'unique_id']]
+
+    return df
+
+def import_data_folds(features, output):
+    # Import all data
+    df = import_data_all(features, output)
 
     # Create train_df based on participants assigned to training set
     folds = [
@@ -55,7 +64,7 @@ def scale_data(train_df, features, output):
     output_scaler = MinMaxScaler(feature_range=(0,1))
 
     # Use all data to fit scalars so that there is universal scalars
-    all_data_df = pd.concat(import_data(features, output))
+    all_data_df = import_data_all(features, output)
 
     # Fit scalers
     features_scaler.fit(all_data_df[features])
@@ -135,7 +144,7 @@ def train_and_run_all(model, model_name):
     features = ['female', 'age', 'height', 'mass', 'ta_set', 'rh_set', 'previous_tre_int', 'previous_mtsk_int']
     output = ['tre_int', 'mtsk_int']
 
-    fold_data = import_data(features, output)
+    fold_data = import_data_folds(features, output)
 
     # Loop for each fold_data
     for idx, train_df in enumerate(fold_data):
@@ -180,7 +189,7 @@ def run_all(model_name):
     output = ['tre_int', 'mtsk_int']
 
     # Import and scale data
-    fold_data = import_data(features, output)
+    fold_data = import_data_folds(features, output)
 
     # Loop for each fold_data
     for idx, train_df in enumerate(fold_data):
