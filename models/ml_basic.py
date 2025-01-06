@@ -51,7 +51,7 @@ def import_data_folds(features, output):
 
     for fold in folds:
         # Training data is everything not in the fold
-        train_df = df[not df['id_all'].isin(fold)]
+        train_df = df[~df['id_all'].isin(fold)]
         # Reset index
         train_df.reset_index(inplace=True)
         fold_data.append(train_df)
@@ -153,7 +153,7 @@ def train_and_run_all(model, model_name):
         model = train_model(model, train_features, train_output)
 
         # Save the model as a pkl file
-        joblib.dump(model, 'model_weights/{}-fold{}.pkl'.format(model_name, ))
+        joblib.dump(model, 'model_weights/{}-fold{}.pkl'.format(model_name, idx+1))
 
         all_tre_rmse = []
         all_mtsk_rmse = []
