@@ -31,24 +31,39 @@ def import_data(features, output):
     df = df[features + output + ['id_all', 'study', 'condition', 'time', 'unique_id']]
 
     # Create train_df based on participants assigned to training set
-    train_ids = [46, 34, 68, 30, 40, 98, 89, 65, 24, 58, 85, 67, 28, 39, 35, 77, 26,
-                 80, 70, 37, 52, 56, 74, 78, 71, 60, 86, 43, 91, 82, 22, 59, 21, 87,
-                 95, 66, 44, 25, 76, 94, 53, 32, 73, 23, 49]
-    train_df = df[df['id_all'].isin(train_ids)]
+    folds = [
+        [24, 28, 43, 50, 57, 62, 66, 68, 71, 72, 75, 79, 83, 86, 90, 93, 94, 95, 97],
+        [22, 25, 26, 32, 34, 35, 45, 48, 54, 55, 59, 67, 69, 70, 74, 76, 85, 91, 98],
+        [21, 27, 30, 37, 42, 46, 47, 49, 53, 61, 63, 65, 73, 78, 81, 82, 87, 92, 96],
+        [23, 29, 33, 36, 38, 39, 40, 41, 44, 52, 56, 58, 60, 64, 77, 80, 84, 88, 89]
+    ]
 
-    # Reset index
-    train_df.reset_index(inplace=True)
+    fold_data = []
 
-    return train_df
+    for fold in folds:
+        # Training data is everything not in the fold
+        train_df = df[not df['id_all'].isin(fold)]
+        # Reset index
+        train_df.reset_index(inplace=True)
+        fold_data.append(train_df)
+
+    return fold_data
 
 # Scale the dataset between 0 to 1
 def scale_data(train_df, features, output):
     features_scaler = MinMaxScaler(feature_range=(0,1))
     output_scaler = MinMaxScaler(feature_range=(0,1))
 
+    # Use all data to fit scalars so that there is universal scalars
+    all_data_df = pd.concat(import_data(features, output))
+
     # Fit scalers
-    train_features = features_scaler.fit_transform(train_df[features])
-    train_output = output_scaler.fit_transform(train_df[output])
+    features_scaler.fit(all_data_df[features])
+    output_scaler.fit(all_data_df[output])
+
+    # Transform training data
+    train_features = features_scaler.transform(train_df[features])
+    train_output = output_scaler.transform(train_df[output])
 
     return features_scaler, output_scaler, train_features, train_output
 
@@ -120,78 +135,86 @@ def train_and_run_all(model, model_name):
     features = ['female', 'age', 'height', 'mass', 'ta_set', 'rh_set', 'previous_tre_int', 'previous_mtsk_int']
     output = ['tre_int', 'mtsk_int']
 
-    train_df = import_data(features, output)
-    features_scaler, output_scaler, train_features, train_output = scale_data(train_df, features, output)
-    model = train_model(model, train_features, train_output)
+    fold_data = import_data(features, output)
 
-    # Save the model as a pkl file
-    joblib.dump(model, 'model_weights/{}.pkl'.format(model_name))
+    # Loop for each fold_data
+    for idx, train_df in enumerate(fold_data):
+        print("Fold:", idx+1)
+        features_scaler, output_scaler, train_features, train_output = scale_data(train_df, features, output)
+        model = train_model(model, train_features, train_output)
 
-    all_tre_rmse = []
-    all_mtsk_rmse = []
+        # Save the model as a pkl file
+        joblib.dump(model, 'model_weights/{}-fold{}.pkl'.format(model_name, ))
 
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 1 (prolonged)', 'hot', features, features_scaler, output_scaler, model, model_name)
-    all_tre_rmse.append(tre_rmse)
-    all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'cool', features, features_scaler, output_scaler, model, model_name)
-    all_tre_rmse.append(tre_rmse)
-    all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'temp', features, features_scaler, output_scaler, model, model_name)
-    all_tre_rmse.append(tre_rmse)
-    all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'warm', features, features_scaler, output_scaler, model, model_name)
-    all_tre_rmse.append(tre_rmse)
-    all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'hot', features, features_scaler, output_scaler, model, model_name)
-    all_tre_rmse.append(tre_rmse)
-    all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 3 (cooling)', 'hot', features, features_scaler, output_scaler, model, model_name)
-    all_tre_rmse.append(tre_rmse)
-    all_mtsk_rmse.append(mtsk_rmse)
+        all_tre_rmse = []
+        all_mtsk_rmse = []
 
-    avg_tre_rmse = np.mean(all_tre_rmse)
-    avg_mtsk_rmse = np.mean(all_mtsk_rmse)
+        tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 1 (prolonged)', 'hot', features, features_scaler, output_scaler, model, model_name)
+        all_tre_rmse.append(tre_rmse)
+        all_mtsk_rmse.append(mtsk_rmse)
+        tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'cool', features, features_scaler, output_scaler, model, model_name)
+        all_tre_rmse.append(tre_rmse)
+        all_mtsk_rmse.append(mtsk_rmse)
+        tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'temp', features, features_scaler, output_scaler, model, model_name)
+        all_tre_rmse.append(tre_rmse)
+        all_mtsk_rmse.append(mtsk_rmse)
+        tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'warm', features, features_scaler, output_scaler, model, model_name)
+        all_tre_rmse.append(tre_rmse)
+        all_mtsk_rmse.append(mtsk_rmse)
+        tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'hot', features, features_scaler, output_scaler, model, model_name)
+        all_tre_rmse.append(tre_rmse)
+        all_mtsk_rmse.append(mtsk_rmse)
+        tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 3 (cooling)', 'hot', features, features_scaler, output_scaler, model, model_name)
+        all_tre_rmse.append(tre_rmse)
+        all_mtsk_rmse.append(mtsk_rmse)
 
-    print(f"{model_name}")
-    print("Average TRE RMSE:", avg_tre_rmse)
-    print("Average MTSK RMSE:", avg_mtsk_rmse)
+        avg_tre_rmse = np.mean(all_tre_rmse)
+        avg_mtsk_rmse = np.mean(all_mtsk_rmse)
+
+        print(f"{model_name}")
+        print("Average TRE RMSE:", avg_tre_rmse)
+        print("Average MTSK RMSE:", avg_mtsk_rmse)
 
 def run_all(model_name):
     features = ['female', 'age', 'height', 'mass', 'ta_set', 'rh_set', 'previous_tre_int', 'previous_mtsk_int']
     output = ['tre_int', 'mtsk_int']
 
     # Import and scale data
-    train_df = import_data(features, output)
-    features_scaler, output_scaler, train_features, train_output = scale_data(train_df, features, output)
+    fold_data = import_data(features, output)
 
-    # Load the model from pkl file instead of training
-    model = joblib.load('model_weights/{}.pkl'.format(model_name))
+    # Loop for each fold_data
+    for idx, train_df in enumerate(fold_data):
+        print("Fold:", idx+1)
+        features_scaler, output_scaler, train_features, train_output = scale_data(train_df, features, output)
 
-    all_tre_rmse = []
-    all_mtsk_rmse = []
+        # Load the model from pkl file instead of training
+        model = joblib.load('model_weights/{}.pkl'.format(model_name))
 
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 1 (prolonged)', 'hot', features, features_scaler, output_scaler, model, model_name)
-    all_tre_rmse.append(tre_rmse)
-    all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'cool', features, features_scaler, output_scaler, model, model_name)
-    all_tre_rmse.append(tre_rmse)
-    all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'temp', features, features_scaler, output_scaler, model, model_name)
-    all_tre_rmse.append(tre_rmse)
-    all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'warm', features, features_scaler, output_scaler, model, model_name)
-    all_tre_rmse.append(tre_rmse)
-    all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'hot', features, features_scaler, output_scaler, model, model_name)
-    all_tre_rmse.append(tre_rmse)
-    all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 3 (cooling)', 'hot', features, features_scaler, output_scaler, model, model_name)
-    all_tre_rmse.append(tre_rmse)
-    all_mtsk_rmse.append(mtsk_rmse)
+        all_tre_rmse = []
+        all_mtsk_rmse = []
 
-    avg_tre_rmse = np.mean(all_tre_rmse)
-    avg_mtsk_rmse = np.mean(all_mtsk_rmse)
+        tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 1 (prolonged)', 'hot', features, features_scaler, output_scaler, model, model_name)
+        all_tre_rmse.append(tre_rmse)
+        all_mtsk_rmse.append(mtsk_rmse)
+        tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'cool', features, features_scaler, output_scaler, model, model_name)
+        all_tre_rmse.append(tre_rmse)
+        all_mtsk_rmse.append(mtsk_rmse)
+        tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'temp', features, features_scaler, output_scaler, model, model_name)
+        all_tre_rmse.append(tre_rmse)
+        all_mtsk_rmse.append(mtsk_rmse)
+        tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'warm', features, features_scaler, output_scaler, model, model_name)
+        all_tre_rmse.append(tre_rmse)
+        all_mtsk_rmse.append(mtsk_rmse)
+        tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'hot', features, features_scaler, output_scaler, model, model_name)
+        all_tre_rmse.append(tre_rmse)
+        all_mtsk_rmse.append(mtsk_rmse)
+        tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 3 (cooling)', 'hot', features, features_scaler, output_scaler, model, model_name)
+        all_tre_rmse.append(tre_rmse)
+        all_mtsk_rmse.append(mtsk_rmse)
 
-    print(f"{model_name}")
-    print("Average TRE RMSE:", avg_tre_rmse)
-    print("Average MTSK RMSE:", avg_mtsk_rmse)
+        avg_tre_rmse = np.mean(all_tre_rmse)
+        avg_mtsk_rmse = np.mean(all_mtsk_rmse)
+
+        print(f"{model_name}")
+        print("Average TRE RMSE:", avg_tre_rmse)
+        print("Average MTSK RMSE:", avg_mtsk_rmse)
