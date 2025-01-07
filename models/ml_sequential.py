@@ -1,4 +1,4 @@
-from models.ml_basic import cool_Ta, cool_RH, import_data, scale_data
+from models.ml_basic import cool_Ta, cool_RH, import_data_folds, scale_data, find_fold_index_for_id
 from helpers import get_sample
 from sklearn.metrics import mean_squared_error
 import numpy as np
@@ -49,15 +49,23 @@ def preprocess_data(train_df, X_scaled, y_scaled):
 # Scale and preprocess data
 def prepare_data(features):
     output = ['tre_int', 'mtsk_int']
+    overall_max_len = 0
 
-    train_df = import_data(features, output)
-    train_df = concat_extra_data(train_df)
-    features_scaler, output_scaler, train_features, train_output = scale_data(train_df, features, output)
-    X_padded, y_padded, max_len = preprocess_data(train_df, train_features, train_output)
-    return features_scaler, output_scaler, X_padded, y_padded, max_len
+    folds = import_data_folds(features, output)
+    X_padded_folds = []
+    y_padded_folds = []
+    for train_df in folds:
+        train_df = concat_extra_data(train_df)
+        features_scaler, output_scaler, train_features, train_output = scale_data(train_df, features, output)
+        X_padded, y_padded, max_len = preprocess_data(train_df, train_features, train_output)
+        X_padded_folds.append(X_padded)
+        y_padded_folds.append(y_padded)
+        # Find new max length of input (how many mins of simulation)
+        overall_max_len = max(overall_max_len, max_len)
+    return features_scaler, output_scaler, X_padded_folds, y_padded_folds, overall_max_len
 
 # Run and save an individual trial
-def run_and_save_trial(study, condition, features, features_scaler, output_scaler, model, model_name, max_len, is_transformer):
+def run_and_save_trial(study, condition, features, features_scaler, output_scaler, models, model_name, max_len, is_transformer):
     # Get sample
     sample = get_sample(study, condition)
 
@@ -66,73 +74,81 @@ def run_and_save_trial(study, condition, features, features_scaler, output_scale
 
     sample_extra_data = concat_extra_data(sample)
 
-    # Fit scalers
-    all_X_scaled = features_scaler.fit_transform(sample_extra_data[features])
+    # Group by unique id
+    grouped = sample_extra_data.groupby('unique_id', sort=False)
+    all_predicted_values = []
+    fold_numbers = [] # array to track the fold numbers for each prediction
 
-    # Create sequences based on unique_id
-    all_unique_ids = sample_extra_data['unique_id'].unique()
-    all_X_seq = []
-    seq_lengths = []  # Store the original sequence lengths
+    for unique_id, group in grouped:
+        fold_idx = find_fold_index_for_id(group['id_all'].iloc[0])  # Use the original 'id_all' for fold assignment
+        fold_number = fold_idx + 1 if fold_idx is not None else None
+        model = models[fold_idx if fold_idx is not None else 0] # default to first model if not in any folds
+        # Scale features for the current group
+        group_X_scaled = features_scaler.transform(group[features])
 
-    for uid in all_unique_ids:
-        seq_data = sample_extra_data['unique_id'] == uid
-        data_for_uid = all_X_scaled[seq_data]
-        all_X_seq.append(data_for_uid)
-        seq_lengths.append(len(data_for_uid))  # Store the original sequence length
+        # Create sequences for the current group
+        seq_lengths = []  # Store the original sequence lengths
+        data_for_uid = group_X_scaled
+        seq_lengths.append(len(data_for_uid))
 
-    # Pad sequences to have the same length
-    all_X_padded = np.array([np.pad(seq, ((0, max_len - len(seq)), (0, 0)), mode='constant') for seq in all_X_seq])
+        # Pad sequences to have the same length
+        group_X_padded = np.array([np.pad(data_for_uid, ((0, max_len - len(data_for_uid)), (0, 0)), mode='constant')])
 
-    # Make predictions
-    if is_transformer:
-        predictions = model.predict([all_X_padded, all_X_padded], verbose=0)
-    else:
-        predictions = model.predict(all_X_padded, verbose=0)
+        # Make predictions
+        if is_transformer:
+            predictions = model.predict([group_X_padded, group_X_padded], verbose=0)
+        else:
+            predictions = model.predict(group_X_padded, verbose=0)
 
-    # Remove predictions corresponding to padded inputs and extra data
-    unpadded_predictions = []
-    for i, length in enumerate(seq_lengths):
-        unpadded_predictions.append(predictions[i, 120:length])  # Slice to remove 120 mins of extra data
+        # Remove predictions corresponding to padded inputs and extra data
+        unpadded_predictions = []
+        for i, length in enumerate(seq_lengths):
+           unpadded_predictions.append(predictions[i, 120:length])  # Slice to remove 120 mins of extra data
 
-    # Flatten the unpadded predictions
-    unpadded_predictions = np.concatenate(unpadded_predictions, axis=0)
+        # Flatten the unpadded predictions
+        unpadded_predictions = np.concatenate(unpadded_predictions, axis=0)
 
-    # Inverse transform the predictions
-    unpadded_predictions = output_scaler.inverse_transform(unpadded_predictions)
+        # Inverse transform the predictions
+        unpadded_predictions = output_scaler.inverse_transform(unpadded_predictions)
 
-    all_core_temps = unpadded_predictions[:, 0]
-    all_skin_temps = unpadded_predictions[:, 1]
+        all_predicted_values.extend(unpadded_predictions)
+        fold_numbers += [fold_number] * len(unpadded_predictions)
+
+    all_core_temps = np.array(all_predicted_values)[:, 0]
+    all_skin_temps = np.array(all_predicted_values)[:, 1]
 
     # Save to csv
     df = pd.DataFrame(all_core_temps, columns=["tre_predicted"])
     df["mtsk_predicted"] = all_skin_temps
+    df["fold_number"] = fold_numbers  # Add fold number information
     df.to_csv('results/{}-{}-{}.csv'.format(model_name, study, condition), index=False)
+
     # Calculate RMSE
     tre_rmse = np.sqrt(mean_squared_error(sample['tre_int'], df['tre_predicted']))
     mtsk_rmse = np.sqrt(mean_squared_error(sample['mtsk_int'], df['mtsk_predicted']))
     return tre_rmse, mtsk_rmse
 
 # Run all trials
-def run_all(model, model_name, features, features_scaler, output_scaler, max_len, is_transformer=False):
+def run_all(models, model_name, features, features_scaler, output_scaler, max_len, is_transformer=False):
     all_tre_rmse = []
     all_mtsk_rmse = []
 
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 1 (prolonged)', 'hot', features, features_scaler, output_scaler, model, model_name, max_len, is_transformer)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 1 (prolonged)', 'hot', features, features_scaler, output_scaler, models, model_name, max_len, is_transformer)
     all_tre_rmse.append(tre_rmse)
     all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'cool', features, features_scaler, output_scaler, model, model_name, max_len, is_transformer)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'cool', features, features_scaler, output_scaler, models, model_name, max_len, is_transformer)
     all_tre_rmse.append(tre_rmse)
     all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'temp', features, features_scaler, output_scaler, model, model_name, max_len, is_transformer)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'temp', features, features_scaler, output_scaler, models, model_name, max_len, is_transformer)
     all_tre_rmse.append(tre_rmse)
     all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'warm', features, features_scaler, output_scaler, model, model_name, max_len, is_transformer)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'warm', features, features_scaler, output_scaler, models, model_name, max_len, is_transformer)
     all_tre_rmse.append(tre_rmse)
     all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'hot', features, features_scaler, output_scaler, model, model_name, max_len, is_transformer)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 2 (indoor)', 'hot', features, features_scaler, output_scaler, models, model_name, max_len, is_transformer)
     all_tre_rmse.append(tre_rmse)
     all_mtsk_rmse.append(mtsk_rmse)
-    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 3 (cooling)', 'hot', features, features_scaler, output_scaler, model, model_name, max_len, is_transformer)
+    tre_rmse, mtsk_rmse = run_and_save_trial('heatwave 3 (cooling)', 'hot', features, features_scaler, output_scaler, models, model_name, max_len, is_transformer)
     all_tre_rmse.append(tre_rmse)
     all_mtsk_rmse.append(mtsk_rmse)
 
