@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
@@ -13,6 +14,15 @@ def find_fold_index_for_id(id_all):
     if id_all in inner_list:
       return i
   return None
+
+# Save scalers
+def save_scalers(features_scaler, output_scaler, directory='model_weights/scalers'):
+    # Create the directory if it doesn't exist
+    os.makedirs(directory, exist_ok=True)
+
+    # Save the scalers
+    joblib.dump(features_scaler, os.path.join(directory, 'features_scaler.pkl'))
+    joblib.dump(output_scaler, os.path.join(directory, 'output_scaler.pkl'))
 
 # Import dataset and trim to only required columns
 def import_data_all(features, output):
@@ -67,6 +77,9 @@ def scale_data(train_df, features, output):
     # Fit scalers
     features_scaler.fit(all_data_df[features])
     output_scaler.fit(all_data_df[output])
+
+    # Save scalers
+    save_scalers(features_scaler, output_scaler)
 
     # Transform training data
     train_features = features_scaler.transform(train_df[features])
