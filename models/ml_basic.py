@@ -71,7 +71,7 @@ def scale_data(train_df, features, output):
     features_scaler = MinMaxScaler(feature_range=(0,1))
     output_scaler = MinMaxScaler(feature_range=(0,1))
 
-    # Use all data to fit scalars so that there is universal scalars
+    # Use all data to fit scalers so that there is universal scalers
     all_data_df = import_data_all(features, output)
 
     # Fit scalers

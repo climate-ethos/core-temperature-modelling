@@ -8,7 +8,7 @@ from models.ml_sequential import preprocess_data, concat_extra_data
 features = ['female', 'age', 'height', 'mass', 'ta_set', 'rh_set']
 output = ['tre_int', 'mtsk_int']
 
-# Create scalars the same as for training
+# Create scalers the same as for training
 train_df = import_data_all(features, output)
 train_df = concat_extra_data(train_df)
 features_scaler, output_scaler, train_features, train_output = scale_data(train_df, features, output)

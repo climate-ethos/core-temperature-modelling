@@ -4,7 +4,7 @@ import joblib
 import os
 
 # Save scalers
-def save_scalers(features_scaler, output_scaler, directory='model_weights/scalars'):
+def save_scalers(features_scaler, output_scaler, directory='model_weights/scalers'):
     # Create the directory if it doesn't exist
     os.makedirs(directory, exist_ok=True)
 
@@ -13,7 +13,7 @@ def save_scalers(features_scaler, output_scaler, directory='model_weights/scalar
     joblib.dump(output_scaler, os.path.join(directory, 'output_scaler.pkl'))
 
 # Load scalers
-def load_scalers(directory='model_weights/scalars'):
+def load_scalers(directory='model_weights/scalers'):
     # Load the scalers
     features_scaler = joblib.load(os.path.join(directory, 'features_scaler.pkl'))
     output_scaler = joblib.load(os.path.join(directory, 'output_scaler.pkl'))
@@ -24,7 +24,7 @@ def load_scalers(directory='model_weights/scalars'):
 features = ['female', 'age', 'height', 'mass', 'ta_set', 'rh_set', 'previous_tre_int', 'previous_mtsk_int']
 output = ['tre_int', 'mtsk_int']
 
-# Create scalars the same as for training
+# Create scalers the same as for training
 train_df = import_data_all(features, output)
 features_scaler, output_scaler, train_features, train_output = scale_data(train_df, features, output)
 # Save them so they can be used later
