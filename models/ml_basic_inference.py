@@ -1,4 +1,4 @@
-from models.ml_basic import import_data, scale_data, simulate_initial
+from models.ml_basic import import_data_all, scale_data, simulate_initial
 import numpy as np
 import joblib
 import os
@@ -20,22 +20,21 @@ def load_scalers(directory='model_weights/scalars'):
 
     return features_scaler, output_scaler
 
-# Load the trained model
-model_name = 'ml_ridge_regression'  # Replace with the desired model name
-model = joblib.load(f'model_weights/{model_name}.pkl')
-
 # Define the features and output variables
 features = ['female', 'age', 'height', 'mass', 'ta_set', 'rh_set', 'previous_tre_int', 'previous_mtsk_int']
 output = ['tre_int', 'mtsk_int']
 
 # Create scalars the same as for training
-train_df = import_data(features, output)
+train_df = import_data_all(features, output)
 features_scaler, output_scaler, train_features, train_output = scale_data(train_df, features, output)
 # Save them so they can be used later
 save_scalers(features_scaler, output_scaler)
 
 # Function to predict tre and mtsk for custom input features
-def predict_custom_input(female, age, height, mass, ta_set, rh_set, time_steps=540):
+def predict_custom_input(model_name, fold, female, age, height, mass, ta_set, rh_set, time_steps=540):
+    # Load model
+    model = joblib.load(f'model_weights/{model_name}-fold{fold}.pkl')
+    # Get parameters
     body_parameters = [female, age, height, mass]
     ambient_conditions = [ta_set, rh_set]
     # Get starting core and skin temp

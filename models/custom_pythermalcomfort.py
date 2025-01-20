@@ -23,11 +23,12 @@ def two_nodes_optimized(
     length_time_simulation = 120,  # length time simulation
     initial_skin_temp = 33.7,
     initial_core_temp = 36.8,
+    body_weight = 70, # body weight in kg
+    acclimatized = None # unused
 ):
     # Initial variables as defined in the ASHRAE 55-2020
     air_speed = max(v, 0.1)
     k_clo = 0.25
-    body_weight = 70  # body weight in kg
     met_factor = 58.2  # met conversion factor
     sbc = 0.000000056697  # Stefan-Boltzmann constant (W/m2K4)
     c_sw = 170  # driving coefficient for regulatory sweating
