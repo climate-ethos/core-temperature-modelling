@@ -3,6 +3,8 @@ import numpy as np
 import joblib
 import os
 
+model_name = 'ml_ridge_regression'  # Replace with the desired model name
+
 # Save scalers
 def save_scalers(features_scaler, output_scaler, directory='model_weights/scalers'):
     # Create the directory if it doesn't exist
@@ -31,7 +33,7 @@ features_scaler, output_scaler, train_features, train_output = scale_data(train_
 save_scalers(features_scaler, output_scaler)
 
 # Function to predict tre and mtsk for custom input features
-def predict_custom_input(model_name, fold, female, age, height, mass, ta_set, rh_set, time_steps=540):
+def predict_custom_input(fold, female, age, height, mass, ta_set, rh_set, time_steps=540):
     # Load model
     model = joblib.load(f'model_weights/{model_name}-fold{fold}.pkl')
     # Get parameters
